@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Minecraft Book and Quill</title>
+  <!-- Font Pixel Minecraft -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      margin: 0;
+      padding: 0;
+      image-rendering: pixelated; /* Memastikan tekstur pixel art tetap tajam */
+    }
+
+    body {
+      background: #141414 url('https://images.unsplash.com/photo-1627856013091-fed6e4e30025?auto=format&fit=crop&w=1920&q=80') center/cover no-repeat fixed;
+      font-family: 'Press Start 2P', monospace;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+    }
+
+    .gui-wrapper {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* Container Buku Minecraft Asli */
+    .mc-book-container {
+      position: relative;
+      width: 292px;  /* Dimensi proporsional GUI Book Java Edition */
+      height: 360px;
+      background: url('https://raw.githubusercontent.com/InventivetalentDev/minecraft-assets/1.19/assets/minecraft/textures/gui/container/book.png') no-repeat left top;
+      background-size: 512px 256px; /* Mapping sprite sheet */
+      padding: 30px 24px 20px 36px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    /* Header Indikator Halaman */
+    .page-header {
+      font-size: 11px;
+      color: #373737;
+      text-align: right;
+      padding-right: 12px;
+      height: 16px;
+    }
+
+    /* Area Teks / Tempat Ketik */
+    .page-textarea {
+      flex: 1;
+      width: 100%;
+      background: transparent;
+      border: none;
+      outline: none;
+      resize: none;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 10px;
+      line-height: 1.5;
+      color: #373737;
+      user-select: text;
+      overflow: hidden;
+    }
+
+    .page-textarea[readonly] {
+      cursor: default;
+    }
+
+    /* Arrow Pembalik Halaman (Khas Minecraft) */
+    .arrow-btn {
+      position: absolute;
+      bottom: 22px;
+      width: 23px;
+      height: 13px;
+      background: url('https://raw.githubusercontent.com/InventivetalentDev/minecraft-assets/1.19/assets/minecraft/textures/gui/container/book.png') no-repeat;
+      background-size: 512px 256px;
+      cursor: pointer;
+    }
+
+    .arrow-prev {
+      left: 38px;
+      background-position: -38px -205px;
+    }
+    .arrow-prev:hover {
+      background-position: -38px -218px;
+    }
+
+    .arrow-next {
+      right: 38px;
+      background-position: -0px -205px;
+    }
+    .arrow-next:hover {
+      background-position: -0px -218px;
+    }
+
+    .arrow-btn.hidden {
+      display: none;
+    }
+
+    /* Tombol Minecraft Abu-abu (Sign, Done, Cancel) */
+    .btn-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .mc-btn {
+      background: #707070;
+      border-top: 3px solid #acacac;
+      border-left: 3px solid #acacac;
+      border-right: 3px solid #373737;
+      border-bottom: 3px solid #373737;
+      color: #ffffff;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 10px;
+      padding: 10px 16px;
+      cursor: pointer;
+      text-shadow: 2px 2px #000;
+      min-width: 120px;
+      text-align: center;
+      box-shadow: 0 4px 0 #000;
+    }
+
+    .mc-btn:hover {
+      background: #8b8b8b;
+    }
+
+    .mc-btn:active {
+      border-top: 3px solid #373737;
+      border-left: 3px solid #373737;
+      border-right: 3px solid #acacac;
+      border-bottom: 3px solid #acacac;
+      transform: translateY(2px);
+    }
+
+    /* Tampilan Sign Mode */
+    .sign-view {
+      display: none;
+      flex-direction: column;
+      height: 100%;
+      justify-content: flex-start;
+      gap: 10px;
+      padding-top: 20px;
+    }
+
+    .sign-view.active {
+      display: flex;
+    }
+
+    .sign-label {
+      font-size: 10px;
+      color: #000;
+      text-align: center;
+    }
+
+    .sign-input {
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid #000;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 10px;
+      text-align: center;
+      outline: none;
+      color: #000;
+      padding: 4px 0;
+    }
+
+    .sign-author {
+      font-size: 9px;
+      color: #555;
+      text-align: center;
+    }
+
+    .sign-warning {
+      font-size: 8px;
+      color: #000;
+      line-height: 1.4;
+      margin-top: 15px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="overlay"></div>
+
+  <div class="gui-wrapper">
+    <div class="mc-book-container">
+      <!-- Mode Edit / Baca -->
+      <div id="editor-view" style="display: flex; flex-direction: column; height: 100%;">
+        <div id="page-num" class="page-header">Page 1 of 1</div>
+        <textarea id="page-text" class="page-textarea" placeholder="Tulis catatan..." maxlength="250"></textarea>
+        
+        <div id="btn-prev" class="arrow-btn arrow-prev hidden"></div>
+        <div id="btn-next" class="arrow-btn arrow-next"></div>
+      </div>
+
+      <!-- Mode Sign Book -->
+      <div id="sign-view" class="sign-view">
+        <div class="sign-label">Enter Book Title:</div>
+        <input type="text" id="title-input" class="sign-input" placeholder="_" maxlength="16">
+        <div class="sign-author">by <span id="author-name">Steve</span></div>
+        <div class="sign-warning">
+          Note! Once you sign the book, it will no longer be editable.
+        </div>
+      </div>
+    </div>
+
+    <!-- Tombol Bawah (Normal Mode) -->
+    <div id="edit-buttons" class="btn-row">
+      <button id="btn-sign" class="mc-btn">Sign</button>
+      <button id="btn-done" class="mc-btn">Done</button>
+    </div>
+
+    <!-- Tombol Bawah (Sign Mode) -->
+    <div id="sign-buttons" class="btn-row" style="display: none;">
+      <button id="btn-sign-close" class="mc-btn">Sign and Close</button>
+      <button id="btn-cancel" class="mc-btn">Cancel</button>
+    </div>
+  </div>
+
+  <script>
+    // Audio FX
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    function playPageSound() {
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.08, audioCtx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+      const noise = audioCtx.createBufferSource();
+      noise.buffer = buffer;
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.value = 1000;
+      const gain = audioCtx.createGain();
+      gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.07);
+      noise.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
+      noise.start();
+    }
+
+    function playClickSound() {
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(120, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.04);
+      gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.04);
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.start(); osc.stop(audioCtx.currentTime + 0.04);
+    }
+
+    // App State
+    let pages = [''];
+    let currentPage = 0;
+    let isSigned = false;
+    let bookTitle = '';
+
+    // DOM Elements
+    const editorView = document.getElementById('editor-view');
+    const signView = document.getElementById('sign-view');
+    const pageText = document.getElementById('page-text');
+    const pageNum = document.getElementById('page-num');
+    const btnPrev = document.getElementById('btn-prev');
+    const btnNext = document.getElementById('btn-next');
+    const titleInput = document.getElementById('title-input');
+
+    const editButtons = document.getElementById('edit-buttons');
+    const signButtons = document.getElementById('sign-buttons');
+    const btnSign = document.getElementById('btn-sign');
+    const btnDone = document.getElementById('btn-done');
+    const btnSignClose = document.getElementById('btn-sign-close');
+    const btnCancel = document.getElementById('btn-cancel');
+
+    function updateUI() {
+      pageText.value = pages[currentPage] || '';
+      pageNum.textContent = `Page ${currentPage + 1} of ${pages.length}`;
+      
+      if (currentPage === 0) btnPrev.classList.add('hidden');
+      else btnPrev.classList.remove('hidden');
+
+      if (isSigned) {
+        pageText.setAttribute('readonly', true);
+        btnSign.style.display = 'none';
+      }
+    }
+
+    pageText.addEventListener('input', (e) => {
+      pages[currentPage] = e.target.value;
+    });
+
+    btnPrev.addEventListener('click', () => {
+      if (currentPage > 0) {
+        playPageSound();
+        currentPage--;
+        updateUI();
+      }
+    });
+
+    btnNext.addEventListener('click', () => {
+      playPageSound();
+      if (currentPage === pages.length - 1) {
+        if (!isSigned) {
+          pages.push('');
+          currentPage++;
+        }
+      } else {
+        currentPage++;
+      }
+      updateUI();
+    });
+
+    btnSign.addEventListener('click', () => {
+      playClickSound();
+      editorView.style.display = 'none';
+      signView.classList.add('active');
+      editButtons.style.display = 'none';
+      signButtons.style.display = 'flex';
+    });
+
+    btnCancel.addEventListener('click', () => {
+      playClickSound();
+      signView.classList.remove('active');
+      editorView.style.display = 'flex';
+      signButtons.style.display = 'none';
+      editButtons.style.display = 'flex';
+    });
+
+    btnSignClose.addEventListener('click', () => {
+      playClickSound();
+      const title = titleInput.value.trim();
+      if (!title) {
+        alert('Masukkan judul buku terlebih dahulu!');
+        return;
+      }
+      bookTitle = title;
+      isSigned = true;
+
+      if (pages.length > 1 && pages[pages.length - 1].trim() === '') {
+        pages.pop();
+      }
+
+      exportDoc();
+
+      signView.classList.remove('active');
+      editorView.style.display = 'flex';
+      signButtons.style.display = 'none';
+      editButtons.style.display = 'flex';
+      updateUI();
+    });
+
+    btnDone.addEventListener('click', () => {
+      playClickSound();
+      exportDoc();
+    });
+
+    function exportDoc() {
+      let titleName = bookTitle || 'Minecraft_Book';
+      let pagesHtml = pages.map((p, idx) => `
+        <h3>Page ${idx + 1}</h3>
+        <p style="white-space: pre-wrap;">${p}</p>
+        <br>
+      `).join('');
+
+      const docContent = `
+        <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+        <head><meta charset='utf-8'><title>${titleName}</title></head>
+        <body style="font-family: Arial, sans-serif; padding: 40px;">
+          <h1>${titleName}</h1>
+          <hr>
+          ${pagesHtml}
+        </body>
+        </html>
+      `;
+
+      const blob = new Blob([docContent], { type: 'application/msword' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `${titleName.replace(/\s+/g, '_')}.doc`;
+      link.click();
+    }
+
+    updateUI();
+  </script>
+</body>
+</html>
